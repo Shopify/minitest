@@ -174,6 +174,7 @@ module Minitest
   def self.__run reporter, options
     suites = Runnable.runnables.shuffle
     parallel, serial = suites.partition { |s| s.test_order == :parallel }
+    STDERR.puts({parallel: parallel.count, serial: serial.count}.inspect)
 
     # If we run the parallel tests before the serial tests, the parallel tests
     # could run in parallel with the serial tests. This would be bad because
@@ -289,14 +290,15 @@ module Minitest
     ##
     # The time it took to run.
 
-    attr_accessor :time
+    attr_accessor :time, :times
 
-    def time_it # :nodoc:
+    def time_it(n) # :nodoc:
       t0 = Minitest.clock_time
 
       yield
     ensure
-      self.time = Minitest.clock_time - t0
+      (self.times ||= {}).merge!(n => Minitest.clock_time - t0)
+      self.time = self.times.values.sum
     end
 
     ##
@@ -593,6 +595,7 @@ module Minitest
       r.failures   = o.failures.dup
       r.time       = o.time
       r.metadata   = o.metadata if o.metadata?
+      r.times      = o.times
 
       r.source_location = o.method(o.name).source_location rescue ["unknown", -1]
 
@@ -697,7 +700,7 @@ module Minitest
     end
 
     def record result # :nodoc:
-      io.print "%.2f s = " % [result.time] if options[:verbose]
+      io.print "%.2f | %.2f - %.2f - %.2f s = " % [result.time, *(result.times||{}).values_at(:setup, :test, :teardown).map(&:to_f)] if options[:verbose]
       io.print result.result_code
       io.puts if options[:verbose]
     end

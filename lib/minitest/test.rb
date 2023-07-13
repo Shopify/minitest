@@ -85,20 +85,26 @@ module Minitest
 
     def run
       with_info_handler do
-        time_it do
+        #time_it do
           capture_exceptions do
-            SETUP_METHODS.each do |hook|
-              self.send hook
+            time_it(:setup) do
+              SETUP_METHODS.each do |hook|
+                self.send hook
+              end
             end
 
-            self.send self.name
-          end
-
-          TEARDOWN_METHODS.each do |hook|
-            capture_exceptions do
-              self.send hook
+            time_it(:test) do
+              self.send self.name
             end
           end
+
+          time_it(:teardown) do
+            TEARDOWN_METHODS.each do |hook|
+              capture_exceptions do
+                self.send hook
+              end
+            end
+          #end
         end
       end
 
